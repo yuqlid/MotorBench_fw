@@ -29,6 +29,7 @@
 #include <stdio.h>
 #include "tim.h"
 #include "spi.h"
+#include "usart.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -148,10 +149,12 @@ void StartDefaultTask(void const * argument)
   /* USER CODE BEGIN StartDefaultTask */
   HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
   HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_2);
+  uint8_t buf[] = "hello\r\n";
   /* Infinite loop */
   for(;;)
   {
     HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
+    HAL_UART_Transmit(&huart1, buf, 8 , 0xFFF);
 
     osDelay(100);
   }
