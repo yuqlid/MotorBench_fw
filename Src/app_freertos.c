@@ -27,6 +27,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */     
 #include <stdio.h>
+#include "tim.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -49,6 +50,7 @@
 
 /* USER CODE END Variables */
 osThreadId defaultTaskHandle;
+osThreadId EncoderReadHandle;
 
 /* Private function prototypes -----------------------------------------------*/
 /* USER CODE BEGIN FunctionPrototypes */
@@ -56,6 +58,7 @@ osThreadId defaultTaskHandle;
 /* USER CODE END FunctionPrototypes */
 
 void StartDefaultTask(void const * argument);
+void EncoderReadTask(void const * argument);
 
 void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
 
@@ -90,6 +93,10 @@ void MX_FREERTOS_Init(void) {
   osThreadDef(defaultTask, StartDefaultTask, osPriorityNormal, 0, 128);
   defaultTaskHandle = osThreadCreate(osThread(defaultTask), NULL);
 
+  /* definition and creation of EncoderRead */
+  osThreadDef(EncoderRead, EncoderReadTask, osPriorityNormal, 0, 128);
+  EncoderReadHandle = osThreadCreate(osThread(EncoderRead), NULL);
+
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
   /* USER CODE END RTOS_THREADS */
@@ -109,11 +116,31 @@ void StartDefaultTask(void const * argument)
   /* Infinite loop */
   for(;;)
   {
-    printf("hello\r\n");
     HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
-    osDelay(500);
+
+    osDelay(100);
   }
   /* USER CODE END StartDefaultTask */
+}
+
+/* USER CODE BEGIN Header_EncoderReadTask */
+/**
+* @brief Function implementing the EncoderRead thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_EncoderReadTask */
+void EncoderReadTask(void const * argument)
+{
+  /* USER CODE BEGIN EncoderReadTask */
+  HAL_TIM_Encoder_Start(&htim2, TIM_CHANNEL_ALL);
+  /* Infinite loop */
+  for(;;)
+  {
+    printf("%4ld\r\n", TIM2->CNT);
+    osDelay(10);
+  }
+  /* USER CODE END EncoderReadTask */
 }
 
 /* Private application code --------------------------------------------------*/
