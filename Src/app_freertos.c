@@ -26,7 +26,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */     
-
+#include <stdio.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -109,8 +109,9 @@ void StartDefaultTask(void const * argument)
   /* Infinite loop */
   for(;;)
   {
+    printf("hello\r\n");
     HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
-    osDelay(100);
+    osDelay(500);
   }
   /* USER CODE END StartDefaultTask */
 }
