@@ -28,6 +28,7 @@
 /* USER CODE BEGIN Includes */     
 #include <stdio.h>
 #include "tim.h"
+#include "spi.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -37,6 +38,10 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
+#define ENABLE_THRMOCOUPLE() HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_RESET)
+#define DISABLE_THRMOCOUPLE() HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_SET)
+#define ENABLE_SERIALENCODER() HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, GPIO_PIN_SET)
+#define DISABLE_SERIALENCODER() HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, GPIO_PIN_RESET)
 
 /* USER CODE END PD */
 
@@ -50,7 +55,14 @@
 
 /* USER CODE END Variables */
 osThreadId defaultTaskHandle;
+uint32_t defaultTaskBuffer[ 128 ];
+osStaticThreadDef_t defaultTaskControlBlock;
 osThreadId EncoderReadHandle;
+uint32_t EncoderReadBuffer[ 128 ];
+osStaticThreadDef_t EncoderReadControlBlock;
+osThreadId SpiTaskHandle;
+uint32_t SpiTaskBuffer[ 256 ];
+osStaticThreadDef_t SpiTaskControlBlock;
 
 /* Private function prototypes -----------------------------------------------*/
 /* USER CODE BEGIN FunctionPrototypes */
@@ -59,8 +71,25 @@ osThreadId EncoderReadHandle;
 
 void StartDefaultTask(void const * argument);
 void EncoderReadTask(void const * argument);
+void SpiTaxk(void const * argument);
 
 void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
+
+/* GetIdleTaskMemory prototype (linked to static allocation support) */
+void vApplicationGetIdleTaskMemory( StaticTask_t **ppxIdleTaskTCBBuffer, StackType_t **ppxIdleTaskStackBuffer, uint32_t *pulIdleTaskStackSize );
+
+/* USER CODE BEGIN GET_IDLE_TASK_MEMORY */
+static StaticTask_t xIdleTaskTCBBuffer;
+static StackType_t xIdleStack[configMINIMAL_STACK_SIZE];
+  
+void vApplicationGetIdleTaskMemory( StaticTask_t **ppxIdleTaskTCBBuffer, StackType_t **ppxIdleTaskStackBuffer, uint32_t *pulIdleTaskStackSize )
+{
+  *ppxIdleTaskTCBBuffer = &xIdleTaskTCBBuffer;
+  *ppxIdleTaskStackBuffer = &xIdleStack[0];
+  *pulIdleTaskStackSize = configMINIMAL_STACK_SIZE;
+  /* place for user code */
+}                   
+/* USER CODE END GET_IDLE_TASK_MEMORY */
 
 /**
   * @brief  FreeRTOS initialization
@@ -90,12 +119,16 @@ void MX_FREERTOS_Init(void) {
 
   /* Create the thread(s) */
   /* definition and creation of defaultTask */
-  osThreadDef(defaultTask, StartDefaultTask, osPriorityNormal, 0, 128);
+  osThreadStaticDef(defaultTask, StartDefaultTask, osPriorityNormal, 0, 128, defaultTaskBuffer, &defaultTaskControlBlock);
   defaultTaskHandle = osThreadCreate(osThread(defaultTask), NULL);
 
   /* definition and creation of EncoderRead */
-  osThreadDef(EncoderRead, EncoderReadTask, osPriorityNormal, 0, 128);
+  osThreadStaticDef(EncoderRead, EncoderReadTask, osPriorityNormal, 0, 128, EncoderReadBuffer, &EncoderReadControlBlock);
   EncoderReadHandle = osThreadCreate(osThread(EncoderRead), NULL);
+
+  /* definition and creation of SpiTask */
+  osThreadStaticDef(SpiTask, SpiTaxk, osPriorityNormal, 0, 256, SpiTaskBuffer, &SpiTaskControlBlock);
+  SpiTaskHandle = osThreadCreate(osThread(SpiTask), NULL);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
@@ -141,6 +174,28 @@ void EncoderReadTask(void const * argument)
     osDelay(10);
   }
   /* USER CODE END EncoderReadTask */
+}
+
+/* USER CODE BEGIN Header_SpiTaxk */
+/**
+* @brief Function implementing the SpiTask thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_SpiTaxk */
+void SpiTaxk(void const * argument)
+{
+  /* USER CODE BEGIN SpiTaxk */
+  DISABLE_SERIALENCODER();
+  DISABLE_THRMOCOUPLE();
+  uint8_t data[6];
+  /* Infinite loop */
+  for(;;)
+  {
+    HAL_SPI_Receive(&hspi1, data, 6, 0xFFF);
+    osDelay(100);
+  }
+  /* USER CODE END SpiTaxk */
 }
 
 /* Private application code --------------------------------------------------*/
